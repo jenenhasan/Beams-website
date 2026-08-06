@@ -1,24 +1,32 @@
 from pydantic_settings import BaseSettings
+from typing import List
 import os
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/beams_cafe"
+   
+    DATABASE_URL: str = "" 
     
-    # JWT Security - Increase expiration time
-    SECRET_KEY: str = "JhcXd-Xw2MrRTM3KwwClkm-o-xeff4qQWZ3TuPz1nKw"
+    
+    SECRET_KEY: str = ""  
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # Changed from 30 to 1440 (24 hours)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     
-    # Admin
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "beams123"
+   
+    ADMIN_USERNAME: str = "" 
+    ADMIN_PASSWORD: str = "" 
     
-    # CORS
-    BACKEND_CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:8000"]
+  
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://beams-website.vercel.app", 
+        "https://beams-website-git-main.vercel.app", 
+        "https://beams-backend.vercel.app", ]
     
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "allow"  
+
 
 settings = Settings()

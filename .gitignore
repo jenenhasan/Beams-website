@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+yarn.lock
+package-lock.json
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swo.*
+*.swp.*
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js specific
+.next/
+out/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.tmp
+*.temp
+.vercel
+
+# Test files
+claude.tsx
+flow.html
+full.html
+index.html
+justlogo.html
+original.tsx
+testpage.tsx
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
