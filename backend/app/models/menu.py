@@ -1,3 +1,5 @@
+#models/menu.py
+
 from sqlalchemy import Column, Integer, JSON, DateTime
 from sqlalchemy.sql import func
 from ..core.database import Base
