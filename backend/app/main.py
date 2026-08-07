@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, menu, orders
+from app.core.database import Base, engine
+from app.models.menu import Menu
 
 app = FastAPI(
     title="BEAMS Cafe API",
     description="Digital menu API for BEAMS Coffee House",
     version="1.0.0"
 )
-
+Base.metadata.create_all(bind=engine)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
