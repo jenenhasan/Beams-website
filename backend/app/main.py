@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, menu, orders
 from app.core.database import Base, engine
 from app.models.menu import Menu
-
+from app.models.order import Order
 app = FastAPI(
     title="BEAMS Cafe API",
     description="Digital menu API for BEAMS Coffee House",
