@@ -1,10 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    experimental: {
-      fontLoadTimeout: 10000, // Increase timeout to 10 seconds
+    async rewrites() {
+      // Only needed in local dev — in production Vercel's own
+      // Services routing (vercel.json) handles /api/* already.
+      if (process.env.NODE_ENV === 'development') {
+        return [
+          {
+            source: '/api/:path*',
+            destination: 'http://localhost:8000/api/:path*',
+          },
+        ];
+      }
+      return [];
     },
-    // Disable font optimization to use standard loading
-    optimizeFonts: false,
-  }
+  };
   
-  module.exports = nextConfig
+  module.exports = nextConfig;
