@@ -15,7 +15,7 @@ import { useCart } from '@/hooks/useCart';
 interface MenuItemType {
   id: string;
   name: string;
-  price: number | string;
+  price: string;
   desc: string;
   image?: string;
   favorite?: boolean;
