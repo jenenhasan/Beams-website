@@ -19,9 +19,8 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:8000",
-        "https://beams-website.vercel.app", 
-        "https://beams-website-git-main.vercel.app", 
-        "https://beams-backend.vercel.app", ]
+        "https://beams-caffe.vercel.app", 
+        "https://beams-caffe-git-main.vercel.app",  ]
     
     class Config:
         env_file = ".env"

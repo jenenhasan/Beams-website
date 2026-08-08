@@ -25,10 +25,10 @@ app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(menu.router, prefix="/api/v1", tags=["menu"])
 app.include_router(orders.router, prefix="/api/v1", tags=["orders"])
 
-@app.get("/")
+@app.get("/api")
 async def root():
     return {"name": "BEAMS Cafe API", "version": "1.0.0", "status": "healthy"}
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
