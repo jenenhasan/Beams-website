@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SplashScreen } from '@/components/SplashScreen';
@@ -37,17 +38,6 @@ interface CategoryType {
 /* -------------------------------------------------------------------------- */
 /*  Design tokens                                                             */
 /* -------------------------------------------------------------------------- */
-/*
-  Two type roles instead of four:
-    display  -> Anton      (hero, headline moments only)
-    body/ui  -> Inter      (everything else, including section labels)
-    data     -> Space Mono (prices, quantities — numbers only)
-  Caveat has been retired: it was competing with Anton for "voice" and
-  appeared on every section label, which diluted both.
-
-  Text colors were failing WCAG AA at #999 / #b0b0b0 on cream/white
-  (~2.8:1). Replaced with #6b6b6b / #5c5c5c which clear 4.5:1.
-*/
 const TEXT_MUTED = '#6b6b6b';
 const TEXT_FAINT = '#5c5c5c';
 
@@ -136,8 +126,7 @@ function trackEvent(name: string, payload?: Record<string, unknown>) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Icon system — replaces emoji nav icons with a single stroke-based set     */
-/*  matching the existing cart/cup icon style. No platform emoji anywhere.    */
+/*  Icon system                                                               */
 /* -------------------------------------------------------------------------- */
 
 type IconName = 'home' | 'menu' | 'star' | 'cart';
@@ -191,9 +180,7 @@ const NavIcon = memo(function NavIcon({ name, size = 18 }: { name: IconName; siz
 NavIcon.displayName = 'NavIcon';
 
 /* -------------------------------------------------------------------------- */
-/*  Navigation model — /admin removed from all customer-facing nav.           */
-/*  It should never have been reachable from public chrome regardless of      */
-/*  what's gated behind the route itself.                                     */
+/*  Navigation model                                                          */
 /* -------------------------------------------------------------------------- */
 
 const PRIMARY_NAV: { href: string; label: string; icon: IconName }[] = [
@@ -227,7 +214,7 @@ const CupIcon = memo(() => (
 
 CupIcon.displayName = 'CupIcon';
 
-// Optimized PickCard with adaptive animations
+// PickCard with full animations
 const PickCard = memo(function PickCard({
   pickItem,
   onAdd,
@@ -243,11 +230,11 @@ const PickCard = memo(function PickCard({
     <motion.button
       type="button"
       aria-label={`Add ${pickItem.name} to cart, $${pickItem.price}`}
-      whileTap={!isLow ? { scale: 0.94 } : undefined}
+      whileTap={!isLow ? { scale: 0.94 } : { scale: 0.97 }}
       whileHover={!isLow ? {
         y: -4,
         boxShadow: '0 8px 24px rgba(0,0,0,0.08)'
-      } : undefined}
+      } : { y: -2 }}
       onClick={() => onAdd(pickItem)}
       style={{
         background: 'white',
@@ -260,8 +247,8 @@ const PickCard = memo(function PickCard({
         cursor: 'pointer',
         minHeight: '44px',
         font: 'inherit',
-        transition: isLow ? 'none' : 'all 0.2s ease',
-        boxShadow: isLow ? 'none' : '0 1px 2px rgba(0,0,0,0.02)',
+        transition: 'all 0.2s ease',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         width: '100%',
       }}
     >
@@ -318,7 +305,7 @@ const PickCard = memo(function PickCard({
   );
 });
 
-// Optimized MenuRow with adaptive animations
+// MenuRow with full animations
 const MenuRow = memo(function MenuRow({
   menuItem,
   index,
@@ -335,21 +322,21 @@ const MenuRow = memo(function MenuRow({
   quality?: 'high' | 'medium' | 'low';
 }) {
   const isLow = quality === 'low';
-  const delay = isLow ? 0 : Math.min(index * 0.04, 0.4);
+  const delay = isLow ? 0.02 : Math.min(index * 0.04, 0.4);
 
   return (
     <motion.div
-      initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 1 }}
+      initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 0.8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={!isLow ? { duration: 0.4, delay } : { duration: 0 }}
-      whileHover={!isLow ? { backgroundColor: 'rgba(0,0,0,0.02)' } : undefined}
+      transition={!isLow ? { duration: 0.4, delay } : { duration: 0.3, delay: delay * 0.5 }}
+      whileHover={!isLow ? { backgroundColor: 'rgba(0,0,0,0.02)' } : { backgroundColor: 'rgba(0,0,0,0.01)' }}
       style={{
         display: 'flex',
         gap: '20px',
         padding: '24px 16px',
         borderRadius: '12px',
         borderBottom: '1px solid #f2f2f2',
-        transition: isLow ? 'none' : 'background-color 0.2s ease',
+        transition: 'background-color 0.2s ease',
       }}
     >
       <div
@@ -515,10 +502,10 @@ function Toast({ toast, onDismiss, quality = 'high' }: {
         {toast && (
           <motion.div
             key={toast.id}
-            initial={!isLow ? { opacity: 0, y: 30, scale: 0.9 } : { opacity: 0 }}
+            initial={!isLow ? { opacity: 0, y: 30, scale: 0.9 } : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={!isLow ? { opacity: 0, y: 20, scale: 0.9 } : { opacity: 0 }}
-            transition={!isLow ? { type: 'spring', stiffness: 400, damping: 28 } : { duration: 0.2 }}
+            exit={!isLow ? { opacity: 0, y: 20, scale: 0.9 } : { opacity: 0, y: 10 }}
+            transition={!isLow ? { type: 'spring', stiffness: 400, damping: 28 } : { duration: 0.3 }}
             style={{
               background: 'var(--blue-deep, #12183f)',
               color: 'white',
@@ -559,6 +546,396 @@ function Toast({ toast, onDismiss, quality = 'high' }: {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Mobile menu — rendered via portal so it's never trapped inside a          */
+/*  transformed ancestor (e.g. the animated sticky header).                   */
+/* -------------------------------------------------------------------------- */
+
+function MobileMenuPortal({
+  isOpen,
+  onClose,
+  isLow,
+  onExploreMenu,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  isLow: boolean;
+  onExploreMenu: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={!isLow ? { duration: 0.3 } : { duration: 0.2 }}
+            onClick={onClose}
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              zIndex: 199,
+              top: '64px',
+            }}
+          />
+
+          <motion.div
+            id="mobile-menu-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site menu"
+            initial={!isLow ? { opacity: 0, x: 300 } : { opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={!isLow ? { opacity: 0, x: 300 } : { opacity: 0, x: 100 }}
+            transition={!isLow ? {
+              duration: 0.35,
+              ease: [0.22, 1, 0.36, 1],
+            } : { duration: 0.3 }}
+            style={{
+              position: 'fixed',
+              top: '0',
+              right: '0',
+              bottom: '0',
+              width: 'clamp(300px, 75vw, 400px)',
+              background: 'white',
+              boxShadow: '-8px 0 40px rgba(0,0,0,0.08)',
+              overflow: 'hidden',
+              zIndex: 200,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div
+              style={{
+                padding: '24px 24px 20px',
+                background: 'linear-gradient(135deg, var(--blue-deep), var(--blue))',
+                position: 'relative',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: '-30%',
+                  right: '-20%',
+                  width: '80%',
+                  height: '150%',
+                  background: 'radial-gradient(circle, rgba(255,107,0,0.15) 0%, transparent 70%)',
+                  borderRadius: '50%',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      background: 'var(--orange)',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 16px rgba(255,107,0,0.3)',
+                    }}
+                  >
+                    <CupIcon />
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: 'Anton, sans-serif',
+                        fontSize: '20px',
+                        color: 'white',
+                        letterSpacing: '1px',
+                      }}
+                    >
+                      BEAMS
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: 'rgba(255,255,255,0.7)',
+                        fontFamily: 'Inter, sans-serif',
+                      }}
+                    >
+                      The Coffee House
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={onClose}
+                  aria-label="Close menu"
+                  className="focusable"
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(255,255,255,0.08)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <nav
+              aria-label="Main"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '16px 20px 20px',
+                gap: '4px',
+                flex: 1,
+                overflowY: 'auto',
+              }}
+            >
+              {MOBILE_NAV.map((navItem, index) => (
+                <motion.div
+                  key={navItem.label}
+                  initial={!isLow ? { opacity: 0, x: 20 } : { opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={!isLow ? { delay: 0.05 + index * 0.05 } : { delay: 0.03 + index * 0.03 }}
+                >
+                  {navItem.href === '#menu' ? (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onExploreMenu();
+                      }}
+                      className="focusable"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        padding: '14px 16px',
+                        minHeight: '52px',
+                        borderRadius: '12px',
+                        width: '100%',
+                        border: 'none',
+                        background:
+                          navItem.label === 'Menu'
+                            ? 'rgba(31,41,251,0.06)'
+                            : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '15px',
+                        fontWeight:
+                          navItem.label === 'Menu' ? 600 : 500,
+                        color:
+                          navItem.label === 'Menu'
+                            ? 'var(--blue)'
+                            : '#1a1a2e',
+                        transition: 'all 0.2s ease',
+                        position: 'relative',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (navItem.label !== 'Menu') {
+                          e.currentTarget.style.background = 'rgba(0,0,0,0.03)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (navItem.label !== 'Menu') {
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '28px',
+                          flexShrink: 0,
+                          display: 'flex',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <NavIcon name={navItem.icon} size={20} />
+                      </span>
+                      <span style={{ flex: 1, textAlign: 'left' }}>
+                        {navItem.label}
+                      </span>
+                      {navItem.label === 'Menu' && (
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            color: 'var(--blue)',
+                            background: 'rgba(31,41,251,0.08)',
+                            padding: '2px 10px',
+                            borderRadius: '999px',
+                          }}
+                        >
+                          Active
+                        </span>
+                      )}
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          fontSize: '14px',
+                          color: '#ccc',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        →
+                      </span>
+                    </button>
+                  ) : (
+                    <Link
+                      href={navItem.href}
+                      onClick={onClose}
+                      className="focusable"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        padding: '14px 16px',
+                        minHeight: '52px',
+                        borderRadius: '12px',
+                        textDecoration: 'none',
+                        background:
+                          navItem.label === 'Menu'
+                            ? 'rgba(31,41,251,0.06)'
+                            : 'transparent',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '15px',
+                        fontWeight:
+                          navItem.label === 'Menu' ? 600 : 500,
+                        color:
+                          navItem.label === 'Menu'
+                            ? 'var(--blue)'
+                            : '#1a1a2e',
+                        transition: 'all 0.2s ease',
+                        position: 'relative',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (navItem.label !== 'Menu') {
+                          e.currentTarget.style.background = 'rgba(0,0,0,0.03)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (navItem.label !== 'Menu') {
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '28px',
+                          flexShrink: 0,
+                          display: 'flex',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <NavIcon name={navItem.icon} size={20} />
+                      </span>
+                      <span style={{ flex: 1, textAlign: 'left' }}>
+                        {navItem.label}
+                      </span>
+                      {navItem.label === 'Menu' && (
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            color: 'var(--blue)',
+                            background: 'rgba(31,41,251,0.08)',
+                            padding: '2px 10px',
+                            borderRadius: '999px',
+                          }}
+                        >
+                          Active
+                        </span>
+                      )}
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          fontSize: '14px',
+                          color: '#ccc',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        →
+                      </span>
+                    </Link>
+                  )}
+                </motion.div>
+              ))}
+            </nav>
+
+            <motion.div
+              initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={!isLow ? { delay: 0.3 } : { delay: 0.2 }}
+              style={{
+                padding: '16px 24px 24px',
+                borderTop: '1px solid #f0f0f0',
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  background: 'var(--cream)',
+                  borderRadius: '12px',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '13px',
+                    color: TEXT_FAINT,
+                  }}
+                >
+                  Freshly roasted, every morning
+                </span>
+                <span style={{ fontSize: '12px', color: TEXT_FAINT }}>
+                  v1.0
+                </span>
+              </div>
+            </motion.div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Main Page                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -577,9 +954,6 @@ export default function Home() {
   const { items, totalItems, addItem, removeItem } = useCart();
   const scrollY = useScrollPosition();
   const showBackToTop = scrollY > 500;
-  // The header's persistent "Order Now" CTA is only useful once the hero's
-  // own CTA has scrolled out of view — showing both at once on load reads
-  // as two competing actions instead of one clear one.
   const showHeaderCta = scrollY > 360;
   const quality = useDeviceQuality();
   const isLow = quality === 'low';
@@ -590,9 +964,6 @@ export default function Home() {
     }
   }, [menu]);
 
-  // Keep the active category chip visible in the horizontally scrolling
-  // row — otherwise switching category (or deep-linking) can leave the
-  // selected chip scrolled off-screen with no visible indication.
   useEffect(() => {
     if (!activeCategory) return;
     const btn = categoryRefs.current[activeCategory];
@@ -602,6 +973,17 @@ export default function Home() {
       block: 'nearest',
     });
   }, [activeCategory, isLow]);
+
+  // Lock body scroll while the mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isMobileMenuOpen]);
 
   const getItemQuantity = (itemId: string) => {
     const cartItem = items.find((item) => item.menuItem.id === itemId);
@@ -643,6 +1025,8 @@ export default function Home() {
     setIsMobileMenuOpen((v) => !v);
   }, 80);
 
+  const closeMobileMenu = useCallback(() => setIsMobileMenuOpen(false), []);
+
   const handleCategoryClick = useDebouncedCallback((categoryId: string) => {
     setActiveCategory(categoryId);
     trackEvent('category_select', { categoryId });
@@ -674,14 +1058,18 @@ export default function Home() {
           fontFamily: 'Inter, sans-serif',
           color: 'var(--ink)',
           background: 'var(--cream)',
+          backgroundImage:
+            'linear-gradient(var(--grid-line) 1px, transparent 1px),' +
+            'linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
         }}
       >
         <motion.p initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           Failed to load menu: {error}
         </motion.p>
         <motion.button
-          whileHover={!isLow ? { scale: 1.05 } : undefined}
-          whileTap={!isLow ? { scale: 0.95 } : undefined}
+          whileHover={!isLow ? { scale: 1.05 } : { scale: 1.03 }}
+          whileTap={!isLow ? { scale: 0.95 } : { scale: 0.97 }}
           onClick={() => window.location.reload()}
           style={{
             padding: '10px 24px',
@@ -714,13 +1102,17 @@ export default function Home() {
         minHeight: '100vh',
         width: '100%',
         background: 'var(--cream)',
+        backgroundImage:
+          'linear-gradient(var(--grid-line) 1px, transparent 1px),' +
+          'linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
         position: 'relative',
         overflowX: 'hidden',
         paddingLeft: 'env(safe-area-inset-left, 0px)',
         paddingRight: 'env(safe-area-inset-right, 0px)',
       }}
     >
-      {/* Skip link — first focusable element, hidden until focused */}
+      {/* Skip link */}
       <a
         href="#main-content"
         className="skip-link"
@@ -743,11 +1135,11 @@ export default function Home() {
         Skip to menu content
       </a>
 
-      {/* TOP NAVIGATION BAR - Responsive */}
+      {/* TOP NAVIGATION BAR */}
       <motion.div
-        initial={!isLow ? { y: -50, opacity: 0 } : { opacity: 0 }}
+        initial={!isLow ? { y: -50, opacity: 0 } : { y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={!isLow ? { duration: 0.5 } : { duration: 0.2 }}
+        transition={!isLow ? { duration: 0.5 } : { duration: 0.4 }}
         style={{
           background: 'rgba(255, 250, 240, 0.92)',
           backdropFilter: 'blur(12px)',
@@ -772,9 +1164,8 @@ export default function Home() {
             minHeight: '64px',
           }}
         >
-          {/* Left: Hamburger (mobile) + Desktop Nav */}
+          {/* Left: Hamburger + Desktop Nav */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            {/* Hamburger - Mobile Only */}
             <button
               onClick={toggleMobileMenu}
               aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -782,7 +1173,7 @@ export default function Home() {
               aria-controls="mobile-menu-panel"
               className="focusable mobile-hamburger"
               style={{
-                display: 'none',
+                display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
                 background: 'transparent',
@@ -831,7 +1222,6 @@ export default function Home() {
               />
             </button>
 
-            {/* Desktop Navigation */}
             <nav
               aria-label="Main navigation"
               className="desktop-nav"
@@ -867,9 +1257,7 @@ export default function Home() {
                       gap: '8px',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isLow) {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
-                      }
+                      e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
@@ -898,9 +1286,7 @@ export default function Home() {
                       gap: '8px',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isLow) {
-                        e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
-                      }
+                      e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
@@ -917,8 +1303,8 @@ export default function Home() {
           {/* Logo */}
           <Link href="/" aria-label="BEAMS home" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div
-              whileHover={!isLow ? { scale: 1.02 } : undefined}
-              whileTap={!isLow ? { scale: 0.98 } : undefined}
+              whileHover={!isLow ? { scale: 1.02 } : { scale: 1.01 }}
+              whileTap={!isLow ? { scale: 0.98 } : { scale: 0.99 }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -972,7 +1358,7 @@ export default function Home() {
                 strokeWidth="2"
                 aria-hidden="true"
                 animate={cartPulse ? { scale: [1, 1.25, 1] } : { scale: 1 }}
-                transition={!isLow ? { duration: 0.45, ease: 'easeOut' } : { duration: 0 }}
+                transition={!isLow ? { duration: 0.45, ease: 'easeOut' } : { duration: 0.4 }}
                 style={{ width: '20px', height: '20px' }}
               >
                 <circle cx="9" cy="21" r="1" />
@@ -983,10 +1369,10 @@ export default function Home() {
                 {totalItems > 0 && (
                   <motion.span
                     key={totalItems}
-                    initial={!isLow ? { scale: 0.5, opacity: 0 } : { opacity: 0 }}
+                    initial={!isLow ? { scale: 0.5, opacity: 0 } : { scale: 0.7, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    exit={!isLow ? { scale: 0.5, opacity: 0 } : { opacity: 0 }}
-                    transition={!isLow ? { type: 'spring', stiffness: 500, damping: 20 } : { duration: 0 }}
+                    exit={!isLow ? { scale: 0.5, opacity: 0 } : { scale: 0.7, opacity: 0 }}
+                    transition={!isLow ? { type: 'spring', stiffness: 500, damping: 20 } : { duration: 0.3 }}
                     aria-hidden="true"
                     style={{
                       position: 'absolute',
@@ -1010,18 +1396,16 @@ export default function Home() {
               </AnimatePresence>
             </Link>
 
-            {/* Desktop: persistent order CTA — only appears once the hero's
-                own CTA has scrolled out of view, so there's one clear
-                call-to-action visible at a time instead of two competing ones. */}
+            {/* Desktop: persistent order CTA */}
             <AnimatePresence>
               {showHeaderCta && (
                 <motion.button
                   onClick={handleExploreMenu}
                   className="focusable desktop-cta"
-                  initial={!isLow ? { opacity: 0, y: -6 } : { opacity: 0 }}
+                  initial={!isLow ? { opacity: 0, y: -6 } : { opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={!isLow ? { opacity: 0, y: -6 } : { opacity: 0 }}
-                  transition={!isLow ? { duration: 0.2 } : { duration: 0 }}
+                  exit={!isLow ? { opacity: 0, y: -6 } : { opacity: 0, y: -4 }}
+                  transition={!isLow ? { duration: 0.2 } : { duration: 0.3 }}
                   style={{
                     padding: '10px 24px',
                     minHeight: '44px',
@@ -1032,20 +1416,16 @@ export default function Home() {
                     fontWeight: 600,
                     fontSize: '14px',
                     cursor: 'pointer',
-                    boxShadow: isLow ? 'none' : '0 2px 8px rgba(255,107,0,0.2)',
+                    boxShadow: '0 2px 8px rgba(255,107,0,0.2)',
                     fontFamily: 'Inter, sans-serif',
                   }}
                   onMouseEnter={(e) => {
-                    if (!isLow) {
-                      e.currentTarget.style.transform = 'scale(1.03)';
-                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(255,107,0,0.3)';
-                    }
+                    e.currentTarget.style.transform = 'scale(1.03)';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(255,107,0,0.3)';
                   }}
                   onMouseLeave={(e) => {
-                    if (!isLow) {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(255,107,0,0.2)';
-                    }
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(255,107,0,0.2)';
                   }}
                 >
                   Order Now
@@ -1054,381 +1434,18 @@ export default function Home() {
             </AnimatePresence>
           </div>
         </div>
-
-        {/* ===== MOBILE MENU ===== */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={!isLow ? { duration: 0.3 } : { duration: 0 }}
-                onClick={toggleMobileMenu}
-                aria-hidden="true"
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  background: 'rgba(0,0,0,0.5)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  zIndex: 99,
-                  top: '64px',
-                }}
-              />
-
-              <motion.div
-                id="mobile-menu-panel"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Site menu"
-                initial={!isLow ? { opacity: 0, x: 300 } : { opacity: 0 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={!isLow ? { opacity: 0, x: 300 } : { opacity: 0 }}
-                transition={!isLow ? {
-                  duration: 0.35,
-                  ease: [0.22, 1, 0.36, 1],
-                } : { duration: 0 }}
-                style={{
-                  position: 'fixed',
-                  top: '0',
-                  right: '0',
-                  bottom: '0',
-                  width: 'clamp(300px, 75vw, 400px)',
-                  background: 'white',
-                  boxShadow: '-8px 0 40px rgba(0,0,0,0.08)',
-                  overflow: 'hidden',
-                  zIndex: 100,
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '24px 24px 20px',
-                    background: 'linear-gradient(135deg, var(--blue-deep), var(--blue))',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                  }}
-                >
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: 'absolute',
-                      top: '-30%',
-                      right: '-20%',
-                      width: '80%',
-                      height: '150%',
-                      background: 'radial-gradient(circle, rgba(255,107,0,0.15) 0%, transparent 70%)',
-                      borderRadius: '50%',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: 'relative',
-                      zIndex: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div
-                        aria-hidden="true"
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          background: 'var(--orange)',
-                          borderRadius: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 4px 16px rgba(255,107,0,0.3)',
-                        }}
-                      >
-                        <CupIcon />
-                      </div>
-                      <div>
-                        <div
-                          style={{
-                            fontFamily: 'Anton, sans-serif',
-                            fontSize: '20px',
-                            color: 'white',
-                            letterSpacing: '1px',
-                          }}
-                        >
-                          BEAMS
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            color: 'rgba(255,255,255,0.7)',
-                            fontFamily: 'Inter, sans-serif',
-                          }}
-                        >
-                          The Coffee House
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={toggleMobileMenu}
-                      aria-label="Close menu"
-                      className="focusable"
-                      style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        background: 'rgba(255,255,255,0.08)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '18px',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                <nav
-                  aria-label="Main"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    padding: '16px 20px 20px',
-                    gap: '4px',
-                    flex: 1,
-                    overflowY: 'auto',
-                  }}
-                >
-                  {MOBILE_NAV.map((navItem, index) => (
-                    <motion.div
-                      key={navItem.label}
-                      initial={!isLow ? { opacity: 0, x: 20 } : { opacity: 0 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={!isLow ? { delay: 0.05 + index * 0.05 } : { duration: 0 }}
-                    >
-                      {navItem.href === '#menu' ? (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleExploreMenu();
-                          }}
-                          className="focusable"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '14px',
-                            padding: '14px 16px',
-                            minHeight: '52px',
-                            borderRadius: '12px',
-                            width: '100%',
-                            border: 'none',
-                            background:
-                              navItem.label === 'Menu'
-                                ? 'rgba(31,41,251,0.06)'
-                                : 'transparent',
-                            cursor: 'pointer',
-                            fontFamily: 'Inter, sans-serif',
-                            fontSize: '15px',
-                            fontWeight:
-                              navItem.label === 'Menu' ? 600 : 500,
-                            color:
-                              navItem.label === 'Menu'
-                                ? 'var(--blue)'
-                                : '#1a1a2e',
-                            transition: 'all 0.2s ease',
-                            position: 'relative',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (navItem.label !== 'Menu' && !isLow) {
-                              e.currentTarget.style.background =
-                                'rgba(0,0,0,0.03)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (navItem.label !== 'Menu') {
-                              e.currentTarget.style.background =
-                                'transparent';
-                            }
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: '28px',
-                              flexShrink: 0,
-                              display: 'flex',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <NavIcon name={navItem.icon} size={20} />
-                          </span>
-                          <span style={{ flex: 1, textAlign: 'left' }}>
-                            {navItem.label}
-                          </span>
-                          {navItem.label === 'Menu' && (
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                color: 'var(--blue)',
-                                background: 'rgba(31,41,251,0.08)',
-                                padding: '2px 10px',
-                                borderRadius: '999px',
-                              }}
-                            >
-                              Active
-                            </span>
-                          )}
-                          <span
-                            aria-hidden="true"
-                            style={{
-                              fontSize: '14px',
-                              color: '#ccc',
-                              transition: 'all 0.2s ease',
-                            }}
-                          >
-                            →
-                          </span>
-                        </button>
-                      ) : (
-                        <Link
-                          href={navItem.href}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="focusable"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '14px',
-                            padding: '14px 16px',
-                            minHeight: '52px',
-                            borderRadius: '12px',
-                            textDecoration: 'none',
-                            background:
-                              navItem.label === 'Menu'
-                                ? 'rgba(31,41,251,0.06)'
-                                : 'transparent',
-                            fontFamily: 'Inter, sans-serif',
-                            fontSize: '15px',
-                            fontWeight:
-                              navItem.label === 'Menu' ? 600 : 500,
-                            color:
-                              navItem.label === 'Menu'
-                                ? 'var(--blue)'
-                                : '#1a1a2e',
-                            transition: 'all 0.2s ease',
-                            position: 'relative',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (navItem.label !== 'Menu' && !isLow) {
-                              e.currentTarget.style.background =
-                                'rgba(0,0,0,0.03)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (navItem.label !== 'Menu') {
-                              e.currentTarget.style.background =
-                                'transparent';
-                            }
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: '28px',
-                              flexShrink: 0,
-                              display: 'flex',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <NavIcon name={navItem.icon} size={20} />
-                          </span>
-                          <span style={{ flex: 1, textAlign: 'left' }}>
-                            {navItem.label}
-                          </span>
-                          {navItem.label === 'Menu' && (
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                color: 'var(--blue)',
-                                background: 'rgba(31,41,251,0.08)',
-                                padding: '2px 10px',
-                                borderRadius: '999px',
-                              }}
-                            >
-                              Active
-                            </span>
-                          )}
-                          <span
-                            aria-hidden="true"
-                            style={{
-                              fontSize: '14px',
-                              color: '#ccc',
-                              transition: 'all 0.2s ease',
-                            }}
-                          >
-                            →
-                          </span>
-                        </Link>
-                      )}
-                    </motion.div>
-                  ))}
-                </nav>
-
-                <motion.div
-                  initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={!isLow ? { delay: 0.3 } : { duration: 0 }}
-                  style={{
-                    padding: '16px 24px 24px',
-                    borderTop: '1px solid #f0f0f0',
-                    flexShrink: 0,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      background: 'var(--cream)',
-                      borderRadius: '12px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '13px',
-                        color: TEXT_FAINT,
-                      }}
-                    >
-                      Freshly roasted, every morning
-                    </span>
-                    <span style={{ fontSize: '12px', color: TEXT_FAINT }}>
-                      v1.0
-                    </span>
-                  </div>
-                </motion.div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
       </motion.div>
 
+      {/* MOBILE MENU — rendered outside the transformed header via portal */}
+      <MobileMenuPortal
+        isOpen={isMobileMenuOpen}
+        onClose={closeMobileMenu}
+        isLow={isLow}
+        onExploreMenu={handleExploreMenu}
+      />
+
       <main id="main-content">
-        {/* ===== HERO SECTION - Responsive 2-column on desktop ===== */}
+        {/* ===== HERO SECTION ===== */}
         <div
           style={{
             padding: '20px 24px 0',
@@ -1452,9 +1469,9 @@ export default function Home() {
             {/* Left side - Hero Text */}
             <div>
               <motion.div
-                initial={!isLow ? { opacity: 0, y: 30 } : { opacity: 0 }}
+                initial={!isLow ? { opacity: 0, y: 30 } : { opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={!isLow ? { duration: 0.6, ease: [0.22, 1, 0.36, 1] } : { duration: 0 }}
+                transition={!isLow ? { duration: 0.6, ease: [0.22, 1, 0.36, 1] } : { duration: 0.5 }}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -1462,9 +1479,9 @@ export default function Home() {
                 }}
               >
                 <motion.h1
-                  initial={!isLow ? { opacity: 0, x: -20 } : { opacity: 0 }}
+                  initial={!isLow ? { opacity: 0, x: -20 } : { opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={!isLow ? { duration: 0.6, delay: 0.1 } : { duration: 0 }}
+                  transition={!isLow ? { duration: 0.6, delay: 0.1 } : { duration: 0.4, delay: 0.05 }}
                   style={{
                     fontFamily: 'Anton, sans-serif',
                     fontWeight: 590,
@@ -1485,7 +1502,7 @@ export default function Home() {
                 <motion.p
                   initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={!isLow ? { duration: 0.6, delay: 0.2 } : { duration: 0 }}
+                  transition={!isLow ? { duration: 0.6, delay: 0.2 } : { duration: 0.4, delay: 0.1 }}
                   style={{
                     fontSize: 'clamp(13px, 1.2vw, 18px)',
                     color: TEXT_MUTED,
@@ -1501,13 +1518,12 @@ export default function Home() {
                   House
                 </motion.p>
 
-                {/* DESKTOP CTA - Hidden on mobile via CSS. Single action only —
-                    the redundant secondary icon-only button has been removed. */}
+                {/* DESKTOP CTA */}
                 <motion.div
                   className="desktop-hero-cta"
-                  initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 0 }}
+                  initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={!isLow ? { duration: 0.6, delay: 0.3 } : { duration: 0 }}
+                  transition={!isLow ? { duration: 0.6, delay: 0.3 } : { duration: 0.4, delay: 0.15 }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1533,22 +1549,18 @@ export default function Home() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      boxShadow: isLow ? 'none' : '0 4px 16px rgba(255,107,0,0.25)',
+                      boxShadow: '0 4px 16px rgba(255,107,0,0.25)',
                       transition: 'all 0.2s ease',
                       letterSpacing: '0.3px',
                       fontFamily: 'Inter, sans-serif',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isLow) {
-                        e.currentTarget.style.transform = 'scale(1.03)';
-                        e.currentTarget.style.boxShadow = '0 6px 24px rgba(255,107,0,0.35)';
-                      }
+                      e.currentTarget.style.transform = 'scale(1.03)';
+                      e.currentTarget.style.boxShadow = '0 6px 24px rgba(255,107,0,0.35)';
                     }}
                     onMouseLeave={(e) => {
-                      if (!isLow) {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(255,107,0,0.25)';
-                      }
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(255,107,0,0.25)';
                     }}
                   >
                     Explore our menu
@@ -1573,7 +1585,7 @@ export default function Home() {
             {/* Right side - Cup Image */}
             <div>
               <motion.div
-                initial={!isLow ? { opacity: 0, scale: 0.8, y: 50 } : { opacity: 0 }}
+                initial={!isLow ? { opacity: 0, scale: 0.8, y: 50 } : { opacity: 0, scale: 0.9, y: 25 }}
                 animate={{
                   opacity: 1,
                   scale: 1,
@@ -1584,7 +1596,13 @@ export default function Home() {
                     damping: 15,
                     duration: 0.8,
                     delay: 0.2,
-                  } : { duration: 0 },
+                  } : {
+                    type: 'spring',
+                    stiffness: 100,
+                    damping: 12,
+                    duration: 0.6,
+                    delay: 0.1,
+                  },
                 }}
                 style={{
                   position: 'relative',
@@ -1595,10 +1613,8 @@ export default function Home() {
                   padding: '20px 0',
                 }}
               >
-                {/* Ground shadow — carries all the "grounding" weight now;
-                    the cup itself has no card/frame around it. */}
                 <motion.div
-                  initial={!isLow ? { opacity: 0, scale: 0.5 } : { opacity: 0 }}
+                  initial={!isLow ? { opacity: 0, scale: 0.5 } : { opacity: 0, scale: 0.7 }}
                   animate={{
                     opacity: 1,
                     scale: 1,
@@ -1606,7 +1622,10 @@ export default function Home() {
                       duration: 0.6,
                       delay: 0.4,
                       ease: 'easeOut',
-                    } : { duration: 0 },
+                    } : {
+                      duration: 0.4,
+                      delay: 0.2,
+                    },
                   }}
                   aria-hidden="true"
                   style={{
@@ -1624,11 +1643,37 @@ export default function Home() {
                   }}
                 />
 
-                {/* Cup — no idle float loop; the entrance spring is the one
-                    orchestrated motion moment for this element. No card/frame
-                    around the photo — the ground shadow above does the work
-                    of anchoring it instead. */}
-                <div
+                <motion.div
+                  animate={!isLow ? {
+                    y: [0, -6, 0, -3, 0],
+                    rotate: [0, 0.3, 0, -0.3, 0],
+                  } : {
+                    y: [0, -3, 0, -1.5, 0],
+                    rotate: [0, 0.15, 0, -0.15, 0],
+                  }}
+                  transition={!isLow ? {
+                    y: {
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    },
+                    rotate: {
+                      duration: 6,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    },
+                  } : {
+                    y: {
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    },
+                    rotate: {
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    },
+                  }}
                   style={{
                     width: '100%',
                     maxWidth: '500px',
@@ -1657,17 +1702,38 @@ export default function Home() {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                </div>
+                </motion.div>
 
-                {/* Signature badge — static, no idle bounce. Rotated slightly
-                    once on entrance rather than animating forever. */}
                 <motion.div
-                  initial={!isLow ? { opacity: 0, scale: 0.5 } : { opacity: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={!isLow ? { opacity: 0, scale: 0.5 } : { opacity: 0, scale: 0.7 }}
+                  animate={!isLow ? {
+                    opacity: 1,
+                    scale: 1,
+                    y: [0, -4, 0, -2, 0],
+                  } : {
+                    opacity: 1,
+                    scale: 1,
+                    y: [0, -2, 0, -1, 0],
+                  }}
                   transition={!isLow ? {
                     opacity: { duration: 0.5, delay: 0.4 },
                     scale: { duration: 0.5, delay: 0.4, type: 'spring', stiffness: 200 },
-                  } : { duration: 0 }}
+                    y: {
+                      duration: 3.5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: 1,
+                    },
+                  } : {
+                    opacity: { duration: 0.4, delay: 0.2 },
+                    scale: { duration: 0.4, delay: 0.2, type: 'spring', stiffness: 150 },
+                    y: {
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: 0.5,
+                    },
+                  }}
                   style={{
                     position: 'absolute',
                     right: '-2%',
@@ -1692,7 +1758,7 @@ export default function Home() {
                       padding: '12px',
                       textTransform: 'uppercase',
                       lineHeight: 1.2,
-                      boxShadow: isLow ? 'none' : '0 4px 20px rgba(255, 107, 0, 0.3)',
+                      boxShadow: '0 4px 20px rgba(255, 107, 0, 0.3)',
                       border: '2px solid rgba(255, 255, 255, 0.2)',
                     }}
                   >
@@ -1705,7 +1771,7 @@ export default function Home() {
                 </motion.div>
               </motion.div>
 
-              {/* MOBILE CTA - Hidden on desktop, visible on mobile */}
+              {/* MOBILE CTA */}
               <div className="mobile-cta" style={{
                 display: 'none',
                 marginTop: '12px'
@@ -1728,7 +1794,7 @@ export default function Home() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
-                    boxShadow: isLow ? 'none' : '0 2px 8px rgba(255,107,0,0.2)',
+                    boxShadow: '0 2px 8px rgba(255,107,0,0.2)',
                     transition: 'all 0.2s ease',
                     letterSpacing: '0.3px',
                   }}
@@ -1755,9 +1821,9 @@ export default function Home() {
 
         {/* ===== TODAY'S PICKS ===== */}
         <motion.div
-          initial={!isLow ? { opacity: 0, y: 30 } : { opacity: 0 }}
+          initial={!isLow ? { opacity: 0, y: 30 } : { opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={!isLow ? { duration: 0.6, delay: 0.4 } : { duration: 0 }}
+          transition={!isLow ? { duration: 0.6, delay: 0.4 } : { duration: 0.4, delay: 0.2 }}
           style={{
             padding: '40px 24px 32px',
             background: 'var(--cream)',
@@ -1805,14 +1871,10 @@ export default function Home() {
                 transition: 'opacity 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                if (!isLow) {
-                  e.currentTarget.style.opacity = '1';
-                }
+                e.currentTarget.style.opacity = '1';
               }}
               onMouseLeave={(e) => {
-                if (!isLow) {
-                  e.currentTarget.style.opacity = '0.8';
-                }
+                e.currentTarget.style.opacity = '0.8';
               }}
             >
               View all →
@@ -1839,10 +1901,10 @@ export default function Home() {
             <motion.div
               ref={menuRef}
               id="menu"
-              initial={!isLow ? { opacity: 0, y: 30 } : { opacity: 0 }}
+              initial={!isLow ? { opacity: 0, y: 30 } : { opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={!isLow ? { opacity: 0, y: -30 } : { opacity: 0 }}
-              transition={!isLow ? { duration: 0.5 } : { duration: 0 }}
+              exit={!isLow ? { opacity: 0, y: -30 } : { opacity: 0, y: -15 }}
+              transition={!isLow ? { duration: 0.5 } : { duration: 0.4 }}
               style={{
                 padding: '24px 24px 60px',
                 background: 'var(--cream)',
@@ -1852,14 +1914,14 @@ export default function Home() {
                 width: '100%',
               }}
             >
-              {/* Category Pills — no rotation, static ticket styling */}
+              {/* Category Pills */}
               <motion.div
                 role="tablist"
                 aria-label="Menu categories"
                 className="category-pills"
-                initial={!isLow ? { opacity: 0, y: 10 } : { opacity: 0 }}
+                initial={!isLow ? { opacity: 0, y: 10 } : { opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={!isLow ? { duration: 0.4, delay: 0.1 } : { duration: 0 }}
+                transition={!isLow ? { duration: 0.4, delay: 0.1 } : { duration: 0.3, delay: 0.05 }}
                 style={{
                   display: 'flex',
                   gap: '10px',
@@ -1903,9 +1965,9 @@ export default function Home() {
                         minHeight: '44px',
                         borderRadius: '999px',
                         cursor: 'pointer',
-                        transition: isLow ? 'none' : 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
-                        boxShadow: isActive && !isLow ? '0 6px 16px rgba(255,107,0,0.28)' : 'none',
-                        transform: isActive && !isLow ? 'translateY(-1px)' : 'translateY(0)',
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
+                        boxShadow: isActive ? '0 6px 16px rgba(255,107,0,0.28)' : 'none',
+                        transform: isActive ? 'translateY(-1px)' : 'translateY(0)',
                       }}
                     >
                       {category.title}
@@ -1919,10 +1981,10 @@ export default function Home() {
                 {activeCategoryData && (
                   <motion.div
                     key={activeCategory}
-                    initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 0 }}
+                    initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={!isLow ? { opacity: 0, y: -20 } : { opacity: 0 }}
-                    transition={!isLow ? { duration: 0.4 } : { duration: 0 }}
+                    exit={!isLow ? { opacity: 0, y: -20 } : { opacity: 0, y: -10 }}
+                    transition={!isLow ? { duration: 0.4 } : { duration: 0.3 }}
                   >
                     <div
                       style={{
@@ -1934,14 +1996,19 @@ export default function Home() {
                       }}
                     >
                       <motion.div
-                        initial={!isLow ? { scale: 0 } : { scale: 1 }}
+                        initial={!isLow ? { scale: 0 } : { scale: 0.5 }}
                         animate={{ scale: 1 }}
                         transition={!isLow ? {
                           type: 'spring',
                           stiffness: 400,
                           damping: 10,
                           delay: 0.1,
-                        } : { duration: 0 }}
+                        } : {
+                          type: 'spring',
+                          stiffness: 300,
+                          damping: 8,
+                          delay: 0.05,
+                        }}
                         aria-hidden="true"
                         style={{
                           fontFamily: 'Space Mono, monospace',
@@ -1962,9 +2029,9 @@ export default function Home() {
                       </motion.div>
                       <div>
                         <motion.h2
-                          initial={!isLow ? { opacity: 0, x: -20 } : { opacity: 0 }}
+                          initial={!isLow ? { opacity: 0, x: -20 } : { opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={!isLow ? { duration: 0.4, delay: 0.15 } : { duration: 0 }}
+                          transition={!isLow ? { duration: 0.4, delay: 0.15 } : { duration: 0.3, delay: 0.08 }}
                           style={{
                             fontFamily: 'Anton, sans-serif',
                             fontWeight: 500,
@@ -1984,7 +2051,7 @@ export default function Home() {
                     <motion.p
                       initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={!isLow ? { duration: 0.4, delay: 0.2 } : { duration: 0 }}
+                      transition={!isLow ? { duration: 0.4, delay: 0.2 } : { duration: 0.3, delay: 0.1 }}
                       style={{
                         fontFamily: 'Inter, sans-serif',
                         fontSize: 'clamp(13px, 1vw, 15px)',
@@ -2019,7 +2086,7 @@ export default function Home() {
                     <motion.p
                       initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={!isLow ? { duration: 0.4, delay: 0.3 } : { duration: 0 }}
+                      transition={!isLow ? { duration: 0.4, delay: 0.3 } : { duration: 0.3, delay: 0.15 }}
                       style={{
                         marginTop: '24px',
                         paddingTop: '20px',
@@ -2054,11 +2121,11 @@ export default function Home() {
             type="button"
             aria-label="Back to top"
             onClick={scrollToTop}
-            initial={!isLow ? { opacity: 0, scale: 0.7, y: 20 } : { opacity: 0 }}
+            initial={!isLow ? { opacity: 0, scale: 0.7, y: 20 } : { opacity: 0, scale: 0.85, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={!isLow ? { opacity: 0, scale: 0.7, y: 20 } : { opacity: 0 }}
-            whileHover={!isLow ? { scale: 1.08 } : undefined}
-            whileTap={!isLow ? { scale: 0.92 } : undefined}
+            exit={!isLow ? { opacity: 0, scale: 0.7, y: 20 } : { opacity: 0, scale: 0.85, y: 10 }}
+            whileHover={!isLow ? { scale: 1.08 } : { scale: 1.04 }}
+            whileTap={!isLow ? { scale: 0.92 } : { scale: 0.96 }}
             className="focusable"
             style={{
               position: 'fixed',
@@ -2075,7 +2142,7 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: isLow ? 'none' : '0 4px 16px rgba(31,41,251,0.25)',
+              boxShadow: '0 4px 16px rgba(31,41,251,0.25)',
               transition: 'all 0.2s ease',
             }}
           >
@@ -2108,7 +2175,7 @@ export default function Home() {
         }
 
         .ticket-pill:hover {
-          transform: translateY(-2px);
+          transform: translateY(-2px) !important;
         }
 
         /* ===== RESPONSIVE STYLES ===== */
@@ -2131,25 +2198,21 @@ export default function Home() {
             display: none !important;
           }
 
-          /* Single column on mobile */
           .hero-grid {
             grid-template-columns: 1fr !important;
             gap: 20px !important;
           }
 
-          /* Today's Picks grid on mobile */
           .picks-grid {
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
             gap: 14px !important;
           }
 
-          /* Category pills: one scrollable row instead of wrapping into a grid */
           .category-pills {
             flex-wrap: nowrap !important;
             justify-content: flex-start !important;
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch;
-            /* fade the right edge to hint there's more to scroll */
             mask-image: linear-gradient(to right, black 92%, transparent 100%);
             -webkit-mask-image: linear-gradient(to right, black 92%, transparent 100%);
           }
@@ -2177,7 +2240,6 @@ export default function Home() {
             display: flex !important;
           }
 
-          /* Today's Picks grid on desktop */
           .picks-grid {
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
             gap: 20px !important;
@@ -2191,7 +2253,6 @@ export default function Home() {
           }
         }
 
-        /* Scrollbar styles */
         div::-webkit-scrollbar {
           height: 6px;
           width: 8px;
@@ -2201,7 +2262,7 @@ export default function Home() {
         }
         div::-webkit-scrollbar-thumb {
           background: var(--toast-scrollbar-thumb);
-          border-radius: 999px;
+          borderRadius: 999px;
           opacity: 0.3;
         }
 
