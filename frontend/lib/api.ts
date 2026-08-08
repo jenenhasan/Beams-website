@@ -7,7 +7,7 @@ import {
     ApiError 
   } from './types';
   
-const API_BASE = '/api/v1'
+const API_BASE = '/api'
   
   async function fetchApi<T>(
     endpoint: string,
