@@ -4,3 +4,5 @@ python-dotenv
 sqlalchemy
 psycopg2-binary
 pydantic-settings
+python-jose[cryptography]
+python-multipart
