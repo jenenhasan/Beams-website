@@ -21,9 +21,9 @@ app.add_middleware(
 )
 
 
-app.include_router(auth.router, prefix="/api", tags=["auth"])
-app.include_router(menu.router, prefix="/api", tags=["menu"])
-app.include_router(orders.router, prefix="/api", tags=["orders"])
+app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
+app.include_router(menu.router, prefix="/api/v1", tags=["menu"])
+app.include_router(orders.router, prefix="/api/v1", tags=["orders"])
 
 @app.get("/")
 async def root():
