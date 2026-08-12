@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SplashScreen } from '@/components/SplashScreen';
 import { useMenu } from '@/hooks/useMenu';
@@ -39,6 +40,9 @@ interface CategoryType {
 /* -------------------------------------------------------------------------- */
 const TEXT_MUTED = '#6b6b6b';
 const TEXT_FAINT = '#5c5c5c';
+
+// Preload critical images - this runs immediately
+const CRITICAL_IMAGES = ['/cup.jpg', '/beams-smalllogo.png'];
 
 /* -------------------------------------------------------------------------- */
 /*  Performance & Responsive Hooks                                            */
@@ -122,6 +126,19 @@ function trackEvent(name: string, payload?: Record<string, unknown>) {
   if (process.env.NODE_ENV !== 'production') {
     console.info(`[analytics] ${name}`, payload ?? {});
   }
+}
+
+// Preload images utility
+function preloadImages(urls: string[]) {
+  if (typeof window === 'undefined') return;
+  urls.forEach(url => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = url;
+    link.fetchPriority = 'high';
+    document.head.appendChild(link);
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -213,7 +230,73 @@ const CupIcon = memo(() => (
 
 CupIcon.displayName = 'CupIcon';
 
-// PickCard with full animations
+// Optimized Image component with loading states
+const OptimizedImage = memo(function OptimizedImage({
+  src,
+  alt,
+  width,
+  height,
+  priority = false,
+  className,
+  style,
+  onLoad,
+}: {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  priority?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  onLoad?: () => void;
+}) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return <CupIcon />;
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {!isLoaded && (
+        <div
+          className="skeleton"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 'inherit',
+            background: 'linear-gradient(135deg, #f5f0eb 0%, #e8e0d8 100%)',
+          }}
+        />
+      )}
+      <Image
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        priority={priority}
+        className={className}
+        style={{
+          ...style,
+          opacity: isLoaded ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+        }}
+        onLoad={() => {
+          setIsLoaded(true);
+          onLoad?.();
+        }}
+        onError={() => setHasError(true)}
+        placeholder="blur"
+        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k="
+      />
+    </div>
+  );
+});
+
+OptimizedImage.displayName = 'OptimizedImage';
+
+// PickCard with optimized image
 const PickCard = memo(function PickCard({
   pickItem,
   onAdd,
@@ -262,17 +345,17 @@ const PickCard = memo(function PickCard({
           overflow: 'hidden',
           borderRadius: '12px',
           background: 'transparent',
+          flexShrink: 0,
         }}
       >
         {pickItem.image ? (
-          <img
+          <OptimizedImage
             src={pickItem.image}
             alt=""
-            loading="lazy"
+            width={80}
+            height={80}
+            priority={false}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
           />
         ) : (
           <CupIcon />
@@ -304,7 +387,7 @@ const PickCard = memo(function PickCard({
   );
 });
 
-// MenuRow with full animations
+// MenuRow with optimized image
 const MenuRow = memo(function MenuRow({
   menuItem,
   index,
@@ -352,14 +435,13 @@ const MenuRow = memo(function MenuRow({
         }}
       >
         {menuItem.image ? (
-          <img
+          <OptimizedImage
             src={menuItem.image}
             alt=""
-            loading="lazy"
+            width={72}
+            height={72}
+            priority={false}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
           />
         ) : (
           <CupIcon />
@@ -947,6 +1029,7 @@ export default function Home() {
   const [logoError, setLogoError] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [cartPulse, setCartPulse] = useState(false);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const categoryRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -958,12 +1041,17 @@ export default function Home() {
   const quality = useDeviceQuality();
   const isLow = quality === 'low';
 
+  // Preload critical images on mount
+  useEffect(() => {
+    preloadImages(CRITICAL_IMAGES);
+  }, []);
+
   // Force splash screen to show for only 1 second
   useEffect(() => {
     if (!showApp) {
       const timer = setTimeout(() => {
         setShowApp(true);
-      }, 1000); // Show splash for exactly 1 second
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
@@ -1054,11 +1142,6 @@ export default function Home() {
   if (!showApp) {
     return <SplashScreen onComplete={() => setShowApp(true)} />;
   }
-
-  // Removed loading spinner - now we show skeletons everywhere
-  // if (loading) {
-  //   return <LoadingSpinner />;
-  // }
 
   if (error) {
     return (
@@ -1330,9 +1413,12 @@ export default function Home() {
               }}
             >
               {!logoError ? (
-                <img
+                <Image
                   src="/beams-smalllogo.png"
                   alt="BEAMS"
+                  width={120}
+                  height={48}
+                  priority
                   style={{
                     width: '120px',
                     height: 'auto',
@@ -1595,7 +1681,7 @@ export default function Home() {
               </motion.div>
             </div>
 
-            {/* Right side - Cup Image */}
+            {/* Right side - Cup Image with Optimized Loading */}
             <div>
               <motion.div
                 initial={!isLow ? { opacity: 0, scale: 0.8, y: 50 } : { opacity: 0, scale: 0.9, y: 25 }}
@@ -1700,19 +1786,19 @@ export default function Home() {
                     marginTop: '-20px',
                   }}
                 >
-                  <img
+                  <OptimizedImage
                     src="/cup.jpg"
                     alt="BEAMS matcha latte in a takeaway cup"
-                    loading="eager"
+                    width={500}
+                    height={300}
+                    priority={true}
+                    onLoad={() => setHeroImageLoaded(true)}
                     style={{
                       width: '100%',
                       height: 'auto',
                       display: 'block',
                       objectFit: 'contain',
                       maxHeight: '300px',
-                    }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
                     }}
                   />
                 </motion.div>
