@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SplashScreen } from '@/components/SplashScreen';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useMenu } from '@/hooks/useMenu';
 import { useCart } from '@/hooks/useCart';
 
@@ -940,6 +939,7 @@ function MobileMenuPortal({
 /* -------------------------------------------------------------------------- */
 
 export default function Home() {
+  // Keep splash screen but make it faster
   const [showApp, setShowApp] = useState(false);
   const [activeCategory, setActiveCategory] = useState('');
   const [showMenu, setShowMenu] = useState(false);
@@ -957,6 +957,20 @@ export default function Home() {
   const showHeaderCta = scrollY > 360;
   const quality = useDeviceQuality();
   const isLow = quality === 'low';
+
+  // Force splash screen to show for only 1 second
+  useEffect(() => {
+    if (!showApp) {
+      const timer = setTimeout(() => {
+        setShowApp(true);
+      }, 1000); // Show splash for exactly 1 second
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showApp]);
+
+  // Check if we're still loading or don't have menu data yet
+  const isLoading = loading || !menu;
 
   useEffect(() => {
     if (menu && menu.categories.length > 0) {
@@ -1036,13 +1050,15 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Show splash screen first - but it will auto-close after 1 second
   if (!showApp) {
     return <SplashScreen onComplete={() => setShowApp(true)} />;
   }
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  // Removed loading spinner - now we show skeletons everywhere
+  // if (loading) {
+  //   return <LoadingSpinner />;
+  // }
 
   if (error) {
     return (
@@ -1088,11 +1104,8 @@ export default function Home() {
     );
   }
 
-  if (!menu || menu.categories.length === 0) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>No menu available</div>;
-  }
-
-  const activeCategoryData = menu.categories.find((c: CategoryType) => c.id === activeCategory);
+  // If we have menu data, get the active category
+  const activeCategoryData = menu?.categories.find((c: CategoryType) => c.id === activeCategory);
   const allItems = getAllItems();
   const todayPicks = allItems.slice(0, 3);
 
@@ -1889,9 +1902,29 @@ export default function Home() {
               gap: '20px',
             }}
           >
-            {todayPicks.map((pickItem: MenuItemType) => (
-              <PickCard key={pickItem.id} pickItem={pickItem} onAdd={handleAddItem} quality={quality} />
-            ))}
+            {isLoading ? (
+              // Show skeleton pick cards while loading
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} style={{
+                  background: 'white',
+                  borderRadius: '16px',
+                  padding: '24px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  border: '1px solid #f2f2f2',
+                  minHeight: '180px',
+                }}>
+                  <div className="skeleton" style={{ width: '80px', height: '80px', borderRadius: '12px', marginBottom: '12px' }} />
+                  <div className="skeleton" style={{ width: '60%', height: '14px', borderRadius: '6px', marginBottom: '4px' }} />
+                  <div className="skeleton" style={{ width: '30%', height: '13px', borderRadius: '6px' }} />
+                </div>
+              ))
+            ) : (
+              todayPicks.map((pickItem: MenuItemType) => (
+                <PickCard key={pickItem.id} pickItem={pickItem} onAdd={handleAddItem} quality={quality} />
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -1940,173 +1973,196 @@ export default function Home() {
                   WebkitBackdropFilter: 'blur(10px)',
                 }}
               >
-                {menu.categories.map((category: CategoryType) => {
-                  const isActive = activeCategory === category.id;
-                  return (
-                    <button
-                      key={category.id}
-                      ref={(el) => {
-                        categoryRefs.current[category.id] = el;
-                      }}
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => handleCategoryClick(category.id)}
-                      className="focusable ticket-pill"
-                      style={{
-                        flex: '0 0 auto',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        letterSpacing: '0.01em',
-                        color: isActive ? 'var(--white)' : '#3d3d3d',
-                        background: isActive ? 'var(--orange)' : 'var(--white)',
-                        border: isActive ? '1.5px solid var(--orange)' : '1.5px solid #ececec',
-                        padding: '10px 20px',
-                        minHeight: '44px',
-                        borderRadius: '999px',
-                        cursor: 'pointer',
-                        transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
-                        boxShadow: isActive ? '0 6px 16px rgba(255,107,0,0.28)' : 'none',
-                        transform: isActive ? 'translateY(-1px)' : 'translateY(0)',
-                      }}
-                    >
-                      {category.title}
-                    </button>
-                  );
-                })}
+                {isLoading ? (
+                  // Show skeleton category pills
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="skeleton" style={{ 
+                      width: '80px', 
+                      height: '44px', 
+                      borderRadius: '999px',
+                      flexShrink: 0 
+                    }} />
+                  ))
+                ) : (
+                  menu.categories.map((category: CategoryType) => {
+                    const isActive = activeCategory === category.id;
+                    return (
+                      <button
+                        key={category.id}
+                        ref={(el) => {
+                          categoryRefs.current[category.id] = el;
+                        }}
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => handleCategoryClick(category.id)}
+                        className="focusable ticket-pill"
+                        style={{
+                          flex: '0 0 auto',
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: '13.5px',
+                          fontWeight: 600,
+                          letterSpacing: '0.01em',
+                          color: isActive ? 'var(--white)' : '#3d3d3d',
+                          background: isActive ? 'var(--orange)' : 'var(--white)',
+                          border: isActive ? '1.5px solid var(--orange)' : '1.5px solid #ececec',
+                          padding: '10px 20px',
+                          minHeight: '44px',
+                          borderRadius: '999px',
+                          cursor: 'pointer',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
+                          boxShadow: isActive ? '0 6px 16px rgba(255,107,0,0.28)' : 'none',
+                          transform: isActive ? 'translateY(-1px)' : 'translateY(0)',
+                        }}
+                      >
+                        {category.title}
+                      </button>
+                    );
+                  })
+                )}
               </motion.div>
 
               {/* Active Category Items */}
               <AnimatePresence mode="wait">
-                {activeCategoryData && (
+                {isLoading ? (
+                  // Show skeleton menu items while loading
                   <motion.div
-                    key={activeCategory}
                     initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={!isLow ? { opacity: 0, y: -20 } : { opacity: 0, y: -10 }}
                     transition={!isLow ? { duration: 0.4 } : { duration: 0.3 }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '16px',
-                        marginBottom: '8px',
-                        flexWrap: 'wrap',
-                      }}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <MenuItemSkeleton key={i} />
+                      ))}
+                    </div>
+                  </motion.div>
+                ) : (
+                  activeCategoryData && (
+                    <motion.div
+                      key={activeCategory}
+                      initial={!isLow ? { opacity: 0, y: 20 } : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={!isLow ? { opacity: 0, y: -20 } : { opacity: 0, y: -10 }}
+                      transition={!isLow ? { duration: 0.4 } : { duration: 0.3 }}
                     >
-                      <motion.div
-                        initial={!isLow ? { scale: 0 } : { scale: 0.5 }}
-                        animate={{ scale: 1 }}
-                        transition={!isLow ? {
-                          type: 'spring',
-                          stiffness: 400,
-                          damping: 10,
-                          delay: 0.1,
-                        } : {
-                          type: 'spring',
-                          stiffness: 300,
-                          damping: 8,
-                          delay: 0.05,
-                        }}
-                        aria-hidden="true"
+                      <div
                         style={{
-                          fontFamily: 'Space Mono, monospace',
-                          fontWeight: 700,
-                          fontSize: 'clamp(12px, 1.2vw, 14px)',
-                          color: 'var(--white)',
-                          background: 'var(--orange)',
-                          width: 'clamp(32px, 3vw, 40px)',
-                          height: 'clamp(32px, 3vw, 40px)',
-                          borderRadius: '10px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
+                          gap: '16px',
+                          marginBottom: '8px',
+                          flexWrap: 'wrap',
                         }}
                       >
-                        {activeCategoryData.numeral}
-                      </motion.div>
-                      <div>
-                        <motion.h2
-                          initial={!isLow ? { opacity: 0, x: -20 } : { opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={!isLow ? { duration: 0.4, delay: 0.15 } : { duration: 0.3, delay: 0.08 }}
+                        <motion.div
+                          initial={!isLow ? { scale: 0 } : { scale: 0.5 }}
+                          animate={{ scale: 1 }}
+                          transition={!isLow ? {
+                            type: 'spring',
+                            stiffness: 400,
+                            damping: 10,
+                            delay: 0.1,
+                          } : {
+                            type: 'spring',
+                            stiffness: 300,
+                            damping: 8,
+                            delay: 0.05,
+                          }}
+                          aria-hidden="true"
                           style={{
-                            fontFamily: 'Anton, sans-serif',
-                            fontWeight: 500,
-                            fontSize: 'clamp(26px, 3vw, 38px)',
-                            color: 'var(--blue)',
-                            lineHeight: 1,
-                            margin: 0,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
+                            fontFamily: 'Space Mono, monospace',
+                            fontWeight: 700,
+                            fontSize: 'clamp(12px, 1.2vw, 14px)',
+                            color: 'var(--white)',
+                            background: 'var(--orange)',
+                            width: 'clamp(32px, 3vw, 40px)',
+                            height: 'clamp(32px, 3vw, 40px)',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
                           }}
                         >
-                          {activeCategoryData.title}
-                        </motion.h2>
+                          {activeCategoryData.numeral}
+                        </motion.div>
+                        <div>
+                          <motion.h2
+                            initial={!isLow ? { opacity: 0, x: -20 } : { opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={!isLow ? { duration: 0.4, delay: 0.15 } : { duration: 0.3, delay: 0.08 }}
+                            style={{
+                              fontFamily: 'Anton, sans-serif',
+                              fontWeight: 500,
+                              fontSize: 'clamp(26px, 3vw, 38px)',
+                              color: 'var(--blue)',
+                              lineHeight: 1,
+                              margin: 0,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            }}
+                          >
+                            {activeCategoryData.title}
+                          </motion.h2>
+                        </div>
                       </div>
-                    </div>
 
-                    <motion.p
-                      initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={!isLow ? { duration: 0.4, delay: 0.2 } : { duration: 0.3, delay: 0.1 }}
-                      style={{
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: 'clamp(13px, 1vw, 15px)',
-                        color: TEXT_MUTED,
-                        margin: '4px 0 24px 48px',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      {activeCategoryData.subtitle}
-                    </motion.p>
+                      <motion.p
+                        initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={!isLow ? { duration: 0.4, delay: 0.2 } : { duration: 0.3, delay: 0.1 }}
+                        style={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: 'clamp(13px, 1vw, 15px)',
+                          color: TEXT_MUTED,
+                          margin: '4px 0 24px 48px',
+                          fontStyle: 'italic',
+                        }}
+                      >
+                        {activeCategoryData.subtitle}
+                      </motion.p>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {loading
-                        ? Array.from({ length: 4 }).map((_: any, i: number) => (
-                            <MenuItemSkeleton key={i} />
-                          ))
-                        : activeCategoryData.items.map(
-                            (menuItem: MenuItemType, index: number) => (
-                              <MenuRow
-                                key={menuItem.id}
-                                menuItem={menuItem}
-                                index={index}
-                                quantity={getItemQuantity(menuItem.id)}
-                                onAdd={handleAddItem}
-                                onRemove={removeItem}
-                                quality={quality}
-                              />
-                            )
-                          )}
-                    </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {activeCategoryData.items.map(
+                          (menuItem: MenuItemType, index: number) => (
+                            <MenuRow
+                              key={menuItem.id}
+                              menuItem={menuItem}
+                              index={index}
+                              quantity={getItemQuantity(menuItem.id)}
+                              onAdd={handleAddItem}
+                              onRemove={removeItem}
+                              quality={quality}
+                            />
+                          )
+                        )}
+                      </div>
 
-                    <motion.p
-                      initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={!isLow ? { duration: 0.4, delay: 0.3 } : { duration: 0.3, delay: 0.15 }}
-                      style={{
-                        marginTop: '24px',
-                        paddingTop: '20px',
-                        borderTop: '1px solid #f0f0f0',
-                        fontSize: 'clamp(12px, 0.9vw, 14px)',
-                        color: TEXT_FAINT,
-                        fontStyle: 'italic',
-                        fontFamily: 'Inter, sans-serif',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <span aria-hidden="true" style={{ color: 'var(--orange)', display: 'inline-flex' }}>
-                        <NavIcon name="star" size={12} />
-                      </span>
-                      indicates a customer favorite. Ask your barista about
-                      seasonal swaps and milk alternatives.
-                    </motion.p>
-                  </motion.div>
+                      <motion.p
+                        initial={!isLow ? { opacity: 0 } : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={!isLow ? { duration: 0.4, delay: 0.3 } : { duration: 0.3, delay: 0.15 }}
+                        style={{
+                          marginTop: '24px',
+                          paddingTop: '20px',
+                          borderTop: '1px solid #f0f0f0',
+                          fontSize: 'clamp(12px, 0.9vw, 14px)',
+                          color: TEXT_FAINT,
+                          fontStyle: 'italic',
+                          fontFamily: 'Inter, sans-serif',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <span aria-hidden="true" style={{ color: 'var(--orange)', display: 'inline-flex' }}>
+                          <NavIcon name="star" size={12} />
+                        </span>
+                        indicates a customer favorite. Ask your barista about
+                        seasonal swaps and milk alternatives.
+                      </motion.p>
+                    </motion.div>
+                  )
                 )}
               </AnimatePresence>
             </motion.div>
